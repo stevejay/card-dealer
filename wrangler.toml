@@ -1,10 +1,11 @@
 name = "card-dealer"
-main = "./src/index.mjs"
-compatibility_date = "2022-09-08"
+main = "src/index.mjs"
+compatibility_date = "2026-11-02"
 
-[durable_objects]
-bindings = [{name = "COUNTER", class_name = "Counter"}]
+[[durable_objects.bindings]]
+name = "CARD_DEALER"
+class_name = "CardDealer"
 
-[[migrations]]
-tag = "v1" # Should be unique for each entry
-new_classes = ["Counter"]
+[exports.CardDealer]
+type = "durable-object"
+storage = "sqlite"
