@@ -1,15 +1,16 @@
 import { DurableObject } from "cloudflare:workers";
 
-const SUITS = ["♠️", "♥️", "♦️", "♣️"];
-const RANKS = [
-  "A", "2", "3", "4", "5", "6", "7",
-  "8", "9", "10", "J", "Q", "K"
+const CARDS = [
+  ...Array(12).fill("step lunge or stop hit"),
+  ...Array(12).fill("feint"),
+  ...Array(12).fill("beat or parry"),
+  ...Array(8).fill("big lunge"),
+  ...Array(4).fill("disengage"),
+  ...Array(4).fill("footwork")
 ];
 
 function shuffledDeck() {
-  const deck = SUITS.flatMap(suit =>
-    RANKS.map(rank => suit + rank)
-  );
+  const deck = [...CARDS];
 
   // Fisher-Yates shuffle
   for (let i = deck.length - 1; i > 0; i--) {
@@ -34,6 +35,29 @@ export class CardDealer extends DurableObject {
   }
 
   fetch(request) {
+    const path = new URL(request.url).pathname;
+
+    if (path === "/shuffle") {
+      if (request.method !== "POST") {
+        return new Response("Method Not Allowed", {
+          status: 405,
+          headers: { Allow: "POST" }
+        });
+      }
+
+      // Discard remaining cards and start a new shuffled deck.
+      this.ctx.storage.kv.put("state", {
+        deck: shuffledDeck(),
+        index: 0
+      });
+
+      return Response.json({ shuffled: true });
+    }
+
+    if (path !== "/") {
+      return new Response("Not Found", { status: 404 });
+    }
+
     if (request.method !== "GET") {
       return new Response("Method Not Allowed", {
         status: 405,
