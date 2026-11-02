@@ -1,57 +1,69 @@
-// Worker
 
-export default {
-  async fetch(request, env) {
-    return await handleRequest(request, env);
-  }
-}
+import { DurableObject } from "cloudflare:workers";
 
-async function handleRequest(request, env) {
-  let id = env.COUNTER.idFromName("A");
-  let obj = env.COUNTER.get(id);
-  let resp = await obj.fetch(request.url);
-  let count = await resp.text();
+const SUITS = ["♠️", "♥️", "♦️", "♣️"];
+const RANKS = [
+  "A", "2", "3", "4", "5", "6", "7",
+  "8", "9", "10", "J", "Q", "K"
+];
 
-  return new Response("Durable Object 'A' count: " + count);
-}
+function shuffledDeck() {
+  const deck = SUITS.flatMap(suit =>
+    RANKS.map(rank => suit + rank)
+  );
 
-// Durable Object
-
-export class Counter {
-  constructor(state, env) {
-    this.state = state;
+  // Fisher-Yates shuffle
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
   }
 
-  // Handle HTTP requests from clients.
-  async fetch(request) {
-    // Apply requested action.
-    let url = new URL(request.url);
+  return deck;
+}
 
-    // Durable Object storage is automatically cached in-memory, so reading the
-    // same key every request is fast. (That said, you could also store the
-    // value in a class member if you prefer.)
-    let value = await this.state.storage.get("value") || 0;
+export class CardDealer extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
 
-    switch (url.pathname) {
-    case "/increment":
-      ++value;
-      break;
-    case "/decrement":
-      --value;
-      break;
-    case "/":
-      // Just serve the current value.
-      break;
-    default:
-      return new Response("Not found", {status: 404});
+    // Initialise a new deck if none exists.
+    if (this.ctx.storage.kv.get("state") === undefined) {
+      this.ctx.storage.kv.put("state", {
+        deck: shuffledDeck(),
+        index: 0
+      });
+    }
+  }
+
+  fetch(request) {
+    if (request.method !== "GET") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: { Allow: "GET" }
+      });
     }
 
-    // We don't have to worry about a concurrent request having modified the
-    // value in storage because "input gates" will automatically protect against
-    // unwanted concurrency. So, read-modify-write is safe. For more details,
-    // see: https://blog.cloudflare.com/durable-objects-easy-fast-correct-choose-three/
-    await this.state.storage.put("value", value);
+    const state = this.ctx.storage.kv.get("state");
 
-    return new Response(value);
+    // Deal the prepared card.
+    const card = state.deck[state.index++];
+
+    // Prepare the next card, reshuffling if necessary.
+    if (state.index === state.deck.length) {
+      state.deck = shuffledDeck();
+      state.index = 0;
+    }
+
+    // Persist the updated deck and position.
+    this.ctx.storage.kv.put("state", state);
+
+    return Response.json({ card });
   }
 }
+
+// Worker entry point
+export default {
+  fetch(request, env) {
+    const dealer = env.CARD_DEALER.getByName("default");
+    return dealer.fetch(request);
+  }
+};
