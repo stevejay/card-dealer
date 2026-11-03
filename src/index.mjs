@@ -1,12 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
 
 const CARDS = [
-  ...Array(12).fill("step lunge or stop hit"),
-  ...Array(12).fill("feint"),
-  ...Array(12).fill("beat or parry"),
-  ...Array(8).fill("big lunge"),
-  ...Array(4).fill("disengage"),
-  ...Array(4).fill("footwork")
+  ...Array(12).fill("STEP LUNGE / STOP HIT"),
+  ...Array(12).fill("FEINT"),
+  ...Array(12).fill("BEAT / PARRY"),
+  ...Array(8).fill("BIG LUNGE"),
+  ...Array(4).fill("ADVANCE"),
+  ...Array(4).fill("DISENGAGE / RETREAT")
 ];
 
 function shuffledDeck() {
