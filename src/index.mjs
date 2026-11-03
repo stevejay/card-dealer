@@ -38,10 +38,10 @@ export class CardDealer extends DurableObject {
     const path = new URL(request.url).pathname;
 
     if (path === "/shuffle") {
-      if (request.method !== "POST") {
+      if (request.method !== "GET") {
         return new Response("Method Not Allowed", {
           status: 405,
-          headers: { Allow: "POST" }
+          headers: { Allow: "GET" }
         });
       }
 
